@@ -11,8 +11,11 @@ class VPNPage extends basePage {
       ...this.state,
       statusZerotier: {installed: false, status: false, text: []},
       statusWireguard: {installed: false, status: false, text: []},
-      selectedVPN: 'zerotier',
-      vpnOptions: [{ label: 'Zerotier', value: 'zerotier' }, { label: 'Wireguard', value: 'wireguard' }],
+      statusSoftether: {installed: false, status: false, text: []},
+      error: null,
+      infoMessage: null,
+      selectedVPN: { label: 'Softether', value: 'softether' },
+      vpnOptions: [{label: 'Softether', value: 'softether' }, { label: 'Zerotier', value: 'zerotier' }, { label: 'Wireguard', value: 'wireguard' }],
       selVPNInstalled: false,
       selVPNActive: false,
       newZerotierKey: "",
@@ -25,8 +28,10 @@ class VPNPage extends basePage {
     // Fetch the vpn information and send to controls
     this.setState({ loading: true });
     Promise.all([
-      fetch(`/api/vpnzerotier`, {headers: {Authorization: `Bearer ${this.state.token}`}}).then(response => response.json()).then(state => { this.setState(state); this.setState({ selVPNInstalled: state.statusZerotier.installed }); this.setState({ selVPNActive: state.statusZerotier.status }) }),
-      fetch(`/api/vpnwireguard`, {headers: {Authorization: `Bearer ${this.state.token}`}}).then(response => response.json()).then(state => { this.setState(state); })
+      fetch(`/api/vpnzerotier`).then(response => response.json()).then(state => { this.setState(state); this.setState({ selVPNInstalled: state.statusZerotier.installed }); this.setState({ selVPNActive: state.statusZerotier.status }) }),
+      fetch(`/api/vpnwireguard`).then(response => response.json()).then(state => { this.setState(state); }),
+      // TODO
+      fetch(`/api/softether`).then(response => response.json()).then(state => { this.setState(state); })
     ]).then(this.loadDone());
   }
 
@@ -40,10 +45,74 @@ class VPNPage extends basePage {
     else if (value == 'wireguard') {
       this.setState({ selVPNInstalled: this.state.statusWireguard.installed });
       this.setState({ selVPNActive: this.state.statusWireguard.status });
-    } 
+    }
+    else if (value.value == 'softether') {
+      this.setState({ selVPNInstalled: this.state.statusSoftether.installed });
+      this.setState({ selVPNActive: this.state.statusSoftether.status });
+    }
     else {
       this.setState({ selVPNInstalled: false });
-    }    
+    }
+  }
+
+  addSoftetherNetwork = (val) => {
+    // add a Softether network
+    fetch('/api/softetheradd', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        network: val
+      })
+    }).then(response => response.json()).then(state => { this.setState(state) }).catch(error => {
+      this.setState({ waiting: false, error: "Error add network: " + error }) });
+  }
+
+  delSoftetherNetwork = (val) => {
+    // Remove a Softether network
+    fetch('/api/softetherdel', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        network: val
+      })
+    }).then(response => response.json()).then(state => { this.setState(state) }).catch(error => {
+      this.setState({ waiting: false, error: "Error remove network: " + error }) });
+  }
+
+  activateSoftetherNetwork = (val) => {
+    // Remove a Softether network
+    fetch('/api/vpnsoftetheractivate', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        network: val
+      })
+    }).then(response => response.json()).then(state => { this.setState(state) }).catch(error => {
+      this.setState({ waiting: false, error: "Error remove network: " + error }) });
+  }
+
+  deactivateSoftetherNetwork = (val) => {
+    // Remove a Softether network
+    fetch('/api/vpnsoftetherdeactivate', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        network: val
+      })
+    }).then(response => response.json()).then(state => { this.setState(state) }).catch(error => {
+      this.setState({ waiting: false, error: "Error remove network: " + error }) });
   }
 
   handlenewZerotierKey = (event) => {

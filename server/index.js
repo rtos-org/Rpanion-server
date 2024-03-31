@@ -29,6 +29,8 @@ const path = require('path')
 const io = require('socket.io')(http, { cookie: false })
 const { check, validationResult } = require('express-validator')
 const crypto = require('crypto');
+// Add api for Softeher
+require('./softether/routes.js')(app);
 
 // set up rate limiter: maximum of fifty requests per minute
 const RateLimit = require('express-rate-limit')

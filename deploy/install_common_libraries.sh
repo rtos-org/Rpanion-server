@@ -20,3 +20,16 @@ sudo apt-get install -y gpsbabel zip
 ## Zerotier and wireguard
 curl -s https://install.zerotier.com | sudo bash
 sudo apt install -y wireguard wireguard-tools
+
+## Softether
+wget -O softether_vpn.tar.gz "https://jp.softether-download.com/files/softether/v4.43-9799-beta-2023.08.31-tree/Linux/SoftEther_VPN_Client/32bit_-_ARM_EABI/softether-vpnclient-v4.43-9799-beta-2023.08.31-linux-arm_eabi-32bit.tar.gz" && tar xzvf softether_vpn.tar.gz
+pushd vpnclient/
+make
+popd
+sudo mv vpnclient/ /usr/local
+pushd /usr/local/vpnclient/
+sudo chmod 600 *
+sudo chmod 700 vpncmd
+sudo chmod 700 vpnclient
+sudo chown root:root *
+popd
