@@ -8,23 +8,17 @@ const winston = require('../winstonconfig')(module)
 const VPNCMD = 'sudo /usr/local/vpnclient/vpncmd /client localhost /cmd'
 
 function getVPNStatusSoftether (errpass, callback) {
+  console.log('server getVPNStatusSoftether')
   // get status of VPN
-  exec('sudo zerotier-cli info && sudo zerotier-cli listnetworks -j', (error, stdout, stderr) => {
-    if (stderr.toString().trim() !== '') {
-      console.error(`exec error: ${error}`)
-      winston.error('Error in getVPNStatusZerotier() ', { message: stderr })
-      return callback(null, { installed: false, status: false, text: JSON.parse('[]') })
-    } else {
-      // zerotier's in JSON format anyway, so just pipe through
-      if (stdout.search('connection failed') > -1) {
-        return callback(errpass, { installed: true, status: false, text: JSON.parse('[]') })
-      } else {
-        const infoout = stdout.slice(0, stdout.indexOf('[\n]'))
-        const networkout = stdout.slice(stdout.indexOf('\n') + 1)
-        const isOnline = infoout.search('ONLINE') > -1
-        return callback(errpass, { installed: true, status: isOnline, text: JSON.parse(networkout) })
-      }
-    }
+  exec(`${VPNCMD} AccountStatusGet vpn`, (error, stdout, stderr) => {
+    console.log('getVPNStatusSoftether execd')
+    console.log(error)
+    console.log(stdout)
+    
+    const isInstalled = stdout.search('Connected to VPN Client') > -1
+    const isStatus = stdout.search('Error occurred') === -1
+
+    return callback(errpass, { installed: isInstalled, status: isStatus, text: JSON.parse('[]') })
   })
 }
 
@@ -36,23 +30,21 @@ function getVPNStatusSoftether (errpass, callback) {
  * @param {*} network 
  * @param {*} callback 
  */
-function addSoftether (network, callback) {
-  console.log('addSoftether: ' + network)
-  checkAndCreateNic().then(_ => {
-    _nicEnable(true).then(_ => {
-      exec(`${VPNCMD} AccountCreate vpn /SERVER ${network.host} /HUB ${network.hub} /USERNAME ${network.username} /NICNAME nic`, (error, stdout, stderr) => {
-        if (stderr.toString().trim() !== '') {
-          console.error(`exec error: ${error}`)
-          winston.error('Error in addSoftether() ', { message: stderr })
-          callback(error)
-        } else {
-          // console.log(stdout)
-          _accountStartup(true).finally(_ => {
-            callback()
-          })
-        }
+async function addSoftether (network, callback) {
+  console.log('addSoftether: ', network)
+  await Promise.all([
+    _nicCreateOrDelete(true),
+    _nicEnable(true),
+    new Promise((resolve, reject) => {
+      exec(`${VPNCMD} AccountCreate vpn /SERVER ${network.server} /HUB ${network.hub} /USERNAME ${network.username} /NICNAME nic`, (error, stdout, stderr) => {
+        console.log('accountcreate', error, stdout)
+        resolve()
       })
-    })
+    }),
+    _accountPasswordSet(network.password),
+    _accountStartup(true)
+  ]).then((result) => {
+    return getVPNStatusSoftether(null, callback)
   })
 }
 
@@ -86,7 +78,7 @@ function deactivateSoftether(network, callback) {
  * private function
  */
 function checkAndCreateNic() {
-  return new Promise(resolve, reject => {
+  return new Promise((resolve, reject) => {
     _nicList.then((nicLists) => {
       if (nicLists.length === 0) {
         // Create a nic
@@ -103,7 +95,7 @@ function checkAndCreateNic() {
 
 function _nicList() {
   console.log('nicList')
-  return new Promise(resolve, reject => {
+  return new Promise((resolve, reject) => {
     exec(`${VPNCMD} NicList`, (error, stdout, stderr) => {
       if (stderr.toString().trim() !== '') {
         console.error(`exec error: ${error}`)
@@ -120,30 +112,31 @@ function _nicList() {
 
 function _nicCreateOrDelete(create) {
   console.log('nicCreate')
-  return new Promise(resolve, reject => {
+  return new Promise((resolve, reject) => {
     let cmd = create ? 'NicCreate' : 'NicDelete'
     exec(`${VPNCMD} ${cmd} nic`, (error, stdout, stderr) => {
-      if (stderr.toString().trim() !== '') {
-        console.error(`exec error: ${error}`)
-        winston.error('Error in nicCreate ', { message: stderr })
-        reject(error)
-      } else {
-        console.log(stdout)
-        // TODO
-        resolve(true)
-      }
+      resolve()
     })
   })
 }
 
 function _nicEnable(enable) {
   console.log('nicEnable')
-  return new Promise(resolve, reject => {
+  return new Promise((resolve, reject) => {
     let cmd = enable ? 'NicEnable' : 'NicDisable'
     exec(`${VPNCMD} ${cmd} nic`, (error, stdout, stderr) => {
+      resolve()
+    })
+  })
+}
+
+function _accountPasswordSet(password) {
+  onsole.log('accountPasswordSet')
+  return new Promise((resolve, reject) => {
+    exec(`${VPNCMD} AccountPasswordSet vpn /PASSWORD ${password} /TYPE standard`, (error, stdout, stderr) => {
       if (stderr.toString().trim() !== '') {
         console.error(`exec error: ${error}`)
-        winston.error('Error in nicEnable ', { message: stderr })
+        winston.error('Error in accountPasswordSet ', { message: stderr })
         reject(error)
       } else {
         console.log(stdout)
@@ -156,7 +149,7 @@ function _nicEnable(enable) {
 
 function _accountStartup(enable) {
   console.log('accountStartup')
-  return new Promise(resolve, reject => {
+  return new Promise((resolve, reject) => {
     let cmd = enable ? 'AccountStartupSet' : 'AccountStartupRemove'
     exec(`${VPNCMD} ${cmd} vpn`, (error, stdout, stderr) => {
       if (stderr.toString().trim() !== '') {

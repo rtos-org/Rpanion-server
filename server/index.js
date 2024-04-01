@@ -23,6 +23,7 @@ const logpaths = require('./paths.js')
 const settings = require('settings-store')
 
 const app = express()
+
 const http = require('http').Server(app)
 const path = require('path')
 
@@ -31,6 +32,8 @@ const { check, validationResult } = require('express-validator')
 const crypto = require('crypto');
 // Add api for Softeher
 require('./softether/routes.js')(app);
+const softetherRoutes = require("./softether/routes.js");
+console.log('11')
 
 // set up rate limiter: maximum of fifty requests per minute
 const RateLimit = require('express-rate-limit')
@@ -481,6 +484,10 @@ app.get('/api/logfile', authenticateToken, (req, res) => {
     res.send(logStr)
   })
 })
+// Softether VPN routes
+app.use('/api/softether', softetherRoutes)
+
+console.log('hoge')
 
 // Serve the vpn zerotier info
 app.get('/api/vpnzerotier', authenticateToken, (req, res) => {
