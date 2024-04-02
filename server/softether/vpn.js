@@ -110,6 +110,10 @@ function _nicCreateOrDelete(create) {
     let cmd = create ? 'NicCreate' : 'NicDelete'
     const output = execSync(`${VPNCMD} ${cmd} nic`)
     console.log(output)
+    if (!(output instanceof Error)) {
+      const ipOutput = execSync(`sudo ip addr add 192.168.30.10/24 dev vpn_nic`)
+      console.log(ipOutput)
+    }
   } catch (error) {
     console.log(error)
   }
