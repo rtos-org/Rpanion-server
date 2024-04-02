@@ -1,25 +1,33 @@
 /*
  VPN management for Softether
 */
+const fs = require('fs')
 const path = require('path')
-const { exec } = require('child_process')
+const { exec, execSync } = require('child_process')
 const winston = require('../winstonconfig')(module)
+const _ = require('underscore')
 
 const VPNCMD = 'sudo /usr/local/vpnclient/vpncmd /client localhost /cmd'
 
 function getVPNStatusSoftether (errpass, callback) {
   console.log('server getVPNStatusSoftether')
-  // get status of VPN
-  exec(`${VPNCMD} AccountStatusGet vpn`, (error, stdout, stderr) => {
-    console.log('getVPNStatusSoftether execd')
-    console.log(error)
-    console.log(stdout)
-    
-    const isInstalled = stdout.search('Connected to VPN Client') > -1
-    const isStatus = stdout.search('Error occurred') === -1
+  startClient(true)
+  // check command exists
+  const isInstalled = fs.existsSync('/usr/local/vpnclient/vpncmd')
+  // get version of VPN
+  const versionOutput = execSync(`${VPNCMD} Version`)
+  const isActive = !(versionOutput instanceof Error)
+  // account info
+  const accountListOutput = execSync(`${VPNCMD} AccountList`)
+  var resultJson = [];
+  if (!(accountListOutput instanceof Error)) {
+    resultJson = parseAccountListOutput(accountListOutput.toString())
+  }
+  const isOnline = !_.isEmpty(resultJson) && resultJson[0].status === 'Connected'
+  console.log(resultJson)
 
-    return callback(errpass, { installed: isInstalled, status: isStatus, text: JSON.parse('[]') })
-  })
+  return callback(errpass, { installed: isInstalled, status: isActive, online: isOnline, text: resultJson })
+  // return callback(errpass, { installed: isInstalled, status: isActive, online: isOnline, text: JSON.parse('[]') })
 }
 
 /**
@@ -30,69 +38,55 @@ function getVPNStatusSoftether (errpass, callback) {
  * @param {*} network 
  * @param {*} callback 
  */
-async function addSoftether (network, callback) {
+function addSoftether (network, callback) {
   console.log('addSoftether: ', network)
-  await Promise.all([
-    _nicCreateOrDelete(true),
-    _nicEnable(true),
-    new Promise((resolve, reject) => {
-      exec(`${VPNCMD} AccountCreate vpn /SERVER ${network.server} /HUB ${network.hub} /USERNAME ${network.username} /NICNAME nic`, (error, stdout, stderr) => {
-        console.log('accountcreate', error, stdout)
-        resolve()
-      })
-    }),
-    _accountPasswordSet(network.password),
-    _accountStartup(true)
-  ]).then((result) => {
-    return getVPNStatusSoftether(null, callback)
-  })
+  _nicCreateOrDelete(true)
+  _nicEnable(true)
+  _accountCreate(network)
+  _accountPasswordSet(network.password)
+  _accountConnect()
+  _accountStartup(true)
+ 
+  return getVPNStatusSoftether(null, callback)
 }
 
 function removeSoftether(network, callback) {
-  console.log('removeSoftether: ' + network)
-  _accountStartup(false).finally(_ => {
-    _nicEnable(false).then(_ => {
-      exec(`${VPNCMD} AccountDelete vpn`, (error, stdout, stderr) => {
-        if (stderr.toString().trim() !== '') {
-          console.error(`exec error: ${error}`)
-          winston.error('Error in removeSoftether', { message: stderr })
-          callback(error)
-        } else {
-          // console.log(stdout)
-          callback()
-        }
-      })
-    })
-  })
+  console.log('removeSoftether', network)
+  _accountStartup(false)
+  _accountDisconnect()
+  _accountDelete()
+
+  return getVPNStatusSoftether(null, callback)
 }
 
-function activateSoftether(network, callback) {
-  console.log('activateSoftether: ' + network)
+function activateSoftether(callback) {
+  console.log('activateSoftether')
+  _accountConnect()
+  _accountStartup(true)
+
+  return getVPNStatusSoftether(null, callback)
 }
 
-function deactivateSoftether(network, callback) {
-  console.log('deactivateSoftether: ' + network)
+function deactivateSoftether(callback) {
+  console.log('deactivateSoftether')
+  _accountDisconnect()
+  _accountStartup(false)
+
+  return getVPNStatusSoftether(null, callback)
+}
+
+function startClient(enable) {
+  try {
+    const cmd = enable ? 'start' : 'stop'
+    execSync(`sudo systemctl ${cmd} vpnclient`)
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 /**
  * private function
  */
-function checkAndCreateNic() {
-  return new Promise((resolve, reject) => {
-    _nicList.then((nicLists) => {
-      if (nicLists.length === 0) {
-        // Create a nic
-        _nicCreateOrDelete(true).then(res => {
-          res ? resolve() : reject('Failed to create nic')
-        })
-        .catch(reason => reject(reason))
-      } else {
-        resolve()
-      }
-    })
-  })
-}
-
 function _nicList() {
   console.log('nicList')
   return new Promise((resolve, reject) => {
@@ -112,57 +106,89 @@ function _nicList() {
 
 function _nicCreateOrDelete(create) {
   console.log('nicCreate')
-  return new Promise((resolve, reject) => {
+  try{
     let cmd = create ? 'NicCreate' : 'NicDelete'
-    exec(`${VPNCMD} ${cmd} nic`, (error, stdout, stderr) => {
-      resolve()
-    })
-  })
+    const output = execSync(`${VPNCMD} ${cmd} nic`)
+    console.log(output)
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 function _nicEnable(enable) {
   console.log('nicEnable')
-  return new Promise((resolve, reject) => {
-    let cmd = enable ? 'NicEnable' : 'NicDisable'
-    exec(`${VPNCMD} ${cmd} nic`, (error, stdout, stderr) => {
-      resolve()
-    })
-  })
+  let cmd = enable ? 'NicEnable' : 'NicDisable'
+  const output = execSync(`${VPNCMD} ${cmd} nic`)
+  console.log(output)
+}
+
+function _accountCreate(account) {
+  console.log('accountCreate')
+  const output = execSync(`${VPNCMD} AccountCreate vpn /SERVER:${account.server}:443 /HUB:${account.hub} /USERNAME:${account.username} /NICNAME:nic`)
+  console.log(output)
+}
+
+function _accountDelete() {
+  console.log('accountDelete')
+  const output = execSync(`${VPNCMD} AccountDelete vpn`)
+  console.log(output)
 }
 
 function _accountPasswordSet(password) {
-  onsole.log('accountPasswordSet')
-  return new Promise((resolve, reject) => {
-    exec(`${VPNCMD} AccountPasswordSet vpn /PASSWORD ${password} /TYPE standard`, (error, stdout, stderr) => {
-      if (stderr.toString().trim() !== '') {
-        console.error(`exec error: ${error}`)
-        winston.error('Error in accountPasswordSet ', { message: stderr })
-        reject(error)
-      } else {
-        console.log(stdout)
-        // TODO
-        resolve()
-      }
-    })
-  })
+  console.log('accountPasswordSet')
+  const output = execSync(`${VPNCMD} AccountPasswordSet vpn /PASSWORD:${password} /TYPE:standard`)
+  console.log(output)
+}
+
+function _accountConnect() {
+  console.log('accountConnect')
+  const output = execSync(`${VPNCMD} AccountConnect vpn`)
+  console.log(output)
+}
+
+function _accountDisconnect() {
+  console.log('AccountDisconnect')
+  try {
+    const output = execSync(`${VPNCMD} AccountDisconnect vpn`)
+    console.log(output)
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 function _accountStartup(enable) {
   console.log('accountStartup')
-  return new Promise((resolve, reject) => {
-    let cmd = enable ? 'AccountStartupSet' : 'AccountStartupRemove'
-    exec(`${VPNCMD} ${cmd} vpn`, (error, stdout, stderr) => {
-      if (stderr.toString().trim() !== '') {
-        console.error(`exec error: ${error}`)
-        winston.error('Error in accountStartup ', { message: stderr })
-        reject(error)
-      } else {
-        console.log(stdout)
-        // TODO
-        resolve()
+  let cmd = enable ? 'AccountStartupSet' : 'AccountStartupRemove'
+  const output = execSync(`${VPNCMD} ${cmd} vpn`)
+  console.log(output)
+}
+
+function parseAccountListOutput(output) {
+  const lines = output.trim().split('\n');
+  const result = {};
+
+  lines.forEach(line => {
+    if (line.includes('|')) {
+      const parts = line.split('|').map(part => part.trim());
+      if (parts.length === 2) {
+        const key = parts[0];
+        const value = parts[1];
+        if (key.includes('VPN Connection Setting Name')) {
+          result.name = value;
+        } else if (key.includes('VPN Server Hostname')) {
+          result.server = value;
+        } else if (key.includes('Status')) {
+          result.status = value;
+        } else if (key.includes('Virtual Hub')) {
+          result.hub = value;
+        } else if (key.includes('Virtual Network Adapter Name')) {
+          result.nic = value;
+        }
       }
-    })
-  })
+    }
+  });
+
+  return _.isEmpty(result) ? [] : [result];
 }
 
 module.exports = {

@@ -12,6 +12,7 @@ wget -O softether_vpn.tar.gz "https://jp.softether-download.com/files/softether/
 pushd vpnclient/
 sudo make
 popd
+sudo rm -rf /usr/local/vpnclient || echo "Not installed"
 sudo mv vpnclient/ /usr/local
 pushd /usr/local/vpnclient/
 sudo chmod 600 *
@@ -19,3 +20,7 @@ sudo chmod 700 vpncmd
 sudo chmod 700 vpnclient
 sudo chown root:root *
 popd
+
+sudo cp ../server/softether/vpnclient.service /etc/systemd/system/
+sudo systemctl enable vpnclient
+sudo systemctl start vpnclient

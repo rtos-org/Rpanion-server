@@ -41,7 +41,7 @@ router.post(
       });
       return res.status(422).json({ error: JSON.stringify(errors.array()) });
     }
-    VPNManager.removeZerotier(req.body.network, (stderr, statusJSON) => {
+    VPNManager.removeSoftether(req.body.network, (stderr, statusJSON) => {
       res.setHeader("Content-Type", "application/json");
       res.send(JSON.stringify({ error: stderr, statusSoftether: statusJSON }));
     });
