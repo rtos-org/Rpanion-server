@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 // Socket IO connection status
 function SocketIOFooter (props) {
-  return <div className="page-content-footer" style={{ textAlign: 'center', bottom: '5px', width: '70%' }}>{props.socketioStatus
+  return <div className="page-content-footer" style={{ margin: '20px 0', textAlign: 'center', bottom: '5px', width: '70%' }}>{props.socketioStatus
     ? <p>
       Server Status: Connected
     </p>

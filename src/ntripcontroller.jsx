@@ -76,7 +76,7 @@ class NTRIPPage extends basePage {
   }
 
   renderTitle() {
-    return "NTRIP Configuration";
+    return "NTRIP接続";
   }
 
   renderContent() {
