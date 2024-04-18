@@ -122,7 +122,7 @@ class mavManager {
 
       this.statusNumRxPackets += 1
       this.timeofLastPacket = (Date.now().valueOf())
-      if (packet.header.msgid === minimal.Heartbeat.MSG_ID) {
+      if (packet.header.msgid === minimal.Heartbeat.MSG_ID && data.autopilot !== 8) {
         // System status
         this.statusFWName = data.autopilot
         this.statusVehType = data.type

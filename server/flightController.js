@@ -57,11 +57,11 @@ class FCDetails {
     this.enableTCP = false
 
     // Use UDP Broadcast?
-    this.enableUDPB = true
+    this.enableUDPB = false
     this.UDPBPort = 14550
 
     // Send datastream requests to flight controller?
-    this.enableDSRequest = false
+    this.enableDSRequest = true
 
     // Current binlog via mavlink-router
     this.binlog = null
@@ -414,6 +414,7 @@ class FCDetails {
       console.log('Closed Router')
       this.eventEmitter.emit('stopLink')
     })
+    */
 
     console.log('Opened Router')
 
@@ -522,7 +523,7 @@ class FCDetails {
       this.m.sendHeartbeat()
     }
       // check for timeouts in serial link (ie disconnected cable or reboot)
-      if (this.m && this.m.conStatusInt() === -1) {
+    if (this.m && this.m.conStatusInt() === -1) {
         console.log('Trying to reconnect FC...')
         this.closeLink(() => {
           this.startLink((err) => {

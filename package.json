@@ -94,7 +94,7 @@
       "prerm": "./debian/prerm"
     }
   },
-  "proxy": "http://localhost:3001",
+  "proxy": "http://172.20.10.4:3001",
   "browserslist": [
     ">0.2%",
     "not dead",
