@@ -249,7 +249,13 @@ class FCDetails {
         conStatus: this.m.conStatusStr(),
         statusText: this.m.statusText,
         byteRate: this.m.statusBytesPerSec.avgBytesSec,
-        fcVersion: this.m.fcVersion
+        fcVersion: this.m.fcVersion,
+        gps: {
+          status: this.m.gpsStatus,
+          lat: this.m.gpsLat,
+          lon: this.m.gpsLon,
+          alt: this.m.gpsAlt
+        }
       }
     } else {
       return {
@@ -259,7 +265,13 @@ class FCDetails {
         conStatus: 'Not connected',
         statusText: '',
         byteRate: 0,
-        fcVersion: ''
+        fcVersion: '',
+        gps: {
+          status: '',
+          lat: 0.0,
+          lon: 0.0,
+          alt: 0.0
+        }
       }
     }
   }

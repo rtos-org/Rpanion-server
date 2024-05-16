@@ -47,6 +47,12 @@ class mavManager {
     this.RinudpIP = null
     this.inStream = new PassThrough()
 
+    // GPS Status
+    this.gpsStatus = null
+    this.gpsLat = 0.0
+    this.gpsLon = 0.0
+    this.gpsAlt = 0.0
+
     this.udpStream.on('message', (msg, rinfo) => {
       // calculate bytes/sec rate (once per 2 sec) and do DS requests
       if ((this.statusBytesPerSec.lastTime + 2000) < Date.now().valueOf()) {
@@ -334,6 +340,13 @@ class mavManager {
     // request ArduPilot version
     const command = new common.RequestMessageCommand(this.targetSystem, this.targetComponent)
     command.messageId = 148 // AUTOPILOT_VERSION message ID
+    command.confirmation = 1
+    this.sendData(command)
+  }
+
+  sendGpsRawIntRequest() {
+    const command = new common.RequestMessageCommand(this.targetSystem, this.targetComponent)
+    command.messageId = common.GpsRawInt.MSG_ID
     command.confirmation = 1
     this.sendData(command)
   }
