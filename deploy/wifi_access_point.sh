@@ -7,10 +7,10 @@ set -x
 
 # Create Access Point
 APNAME="WiFiAP"
-SSID="rpanion"
-KEY="rpanion123"
+SSID="spark-ap"
+KEY="spark1234"
 
-IFNAME=wlan0
+IFNAME=vlan0
 sudo nmcli connection add type wifi ifname $IFNAME con-name $APNAME ssid $SSID
 sudo nmcli connection modify $APNAME 802-11-wireless.mode ap
 sudo nmcli connection modify $APNAME 802-11-wireless.band bg
