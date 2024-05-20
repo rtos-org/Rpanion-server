@@ -94,7 +94,7 @@
       "prerm": "./debian/prerm"
     }
   },
-  "proxy": "http://192.168.30.10:3001",
+  "proxy": "http://10.0.2.100:3001",
   "browserslist": [
     ">0.2%",
     "not dead",

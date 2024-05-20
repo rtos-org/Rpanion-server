@@ -33,7 +33,7 @@ const crypto = require('crypto');
 // Add api for Softeher
 require('./softether/routes.js')(app);
 const softetherRoutes = require("./softether/routes.js");
-console.log('11')
+const scheduleRoutes = require("./schedule/routes.js");
 
 // set up rate limiter: maximum of fifty requests per minute
 const RateLimit = require('express-rate-limit')
@@ -486,6 +486,7 @@ app.get('/api/logfile', authenticateToken, (req, res) => {
 })
 // Softether VPN routes
 app.use('/api/softether', softetherRoutes)
+app.use('/api/schedule', scheduleRoutes)
 
 console.log('hoge')
 
