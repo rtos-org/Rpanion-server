@@ -37,12 +37,6 @@ class SchedulePage extends basePage {
           getActions:  (params) => [
             <GridActionsCellItem
               key={params.id}
-              icon={<MdEditCalendar />}
-              label="編集"
-              showInMenu={false}
-            />,
-            <GridActionsCellItem
-              key={params.id}
               icon={<MdClose />}
               label="削除"
               showInMenu={false}
@@ -153,6 +147,11 @@ class SchedulePage extends basePage {
     .then(data => {
       console.log(data);
       this.setState(data)
+      this.setState({
+        name: '',
+        datetime: '',
+        file: null,
+      })
       this.handleClose();
     })
     .catch(error => {

@@ -23,7 +23,10 @@ function addTask(task, files, callback) {
 
   // ファイルの保存処理
   const file = files.file;
+  console.log(file)
+  console.log(uploadDir)
   const filePath = path.join(uploadDir, file.name);
+  console.log(filePath)
   file.mv(filePath, (err) => {
     if (err) {
       return callback(err);
@@ -36,11 +39,13 @@ function addTask(task, files, callback) {
       tasksJson = JSON.parse(tasksData);
     }
 
+    console.log(file.name)
+
     tasksJson.push({
       id: _.random( 0, 10000000),
       name: task.name,
       startTime: task.datetime,
-      planName: file.name.split('.')[0]
+      planName: file.name
     });
 
     fs.writeFileSync(tasksFilePath, JSON.stringify(tasksJson, null, 2), 'utf8');
