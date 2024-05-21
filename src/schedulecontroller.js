@@ -42,13 +42,6 @@ class SchedulePage extends basePage {
               showInMenu={false}
               onClick={() => this.handleDeleteClick(params)}
             />,
-            <GridActionsCellItem
-              key={params.id}
-              icon={<GrSchedulePlay />}
-              label="save"
-              showInMenu={false}
-              onClick={() => this.handleScheduleClick(params)}
-            />,
           ],
         },
         {
@@ -71,6 +64,22 @@ class SchedulePage extends basePage {
           width: 250,
           flex: 3
         },
+        {
+          field: 'status',
+          headerName: 'ステータス',
+          flex: 2
+        },
+        {
+          field: 'executionStartTime',
+          headerName: '開始時間',
+          flex: 2
+        },
+        {
+          field: 'executionEndTime',
+          headerName: '終了時間',
+          flex: 2
+        },
+
       ],
       taskLists: []
     }
@@ -103,10 +112,6 @@ class SchedulePage extends basePage {
     }).then(response => response.json()).then(state => { this.setState(state) }).catch(error => {
       this.setState({ waiting: false, error: "Error remove schedule: " + error })
     });
-  }
-
-  handleScheduleClick = (params) => {
-    console.log(`handleScheduleClick:id=${params.id}`)
   }
 
   handleShow = () => {
