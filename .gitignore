@@ -36,3 +36,4 @@ mav.*
 
 server/schedule/missions
 server/schedule/tasks.json
+server/schedule/cron/spark-sitl

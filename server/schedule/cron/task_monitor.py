@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 import time
 from pymavlink import mavutil
+from pprint import pprint
 
 # 現在のスクリプトのディレクトリを基準にパスを設定
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,9 +22,13 @@ def get_current_time():
     return datetime.now().strftime('%Y-%m-%d %H:%M:00')
 
 def connect_vehicle():
-    # シリアルポートやUDP/TCPポートを指定して接続します
-    connection_string = 'tcp:127.0.0.1:5760'  # 適宜変更してください
-    vehicle = mavutil.mavlink_connection(connection_string)
+    connection_string = '127.0.0.1:14550'
+    vehicle = mavutil.mavlink_connection(
+        connection_string,
+        source_system=1,
+        source_component=90,
+        autoreconnect=True
+    )
     vehicle.wait_heartbeat()
     return vehicle
 
@@ -35,7 +40,8 @@ def upload_mission(vehicle, mission_file_path):
     for line in mission_data:
         if line.startswith('QGC WPL 110'):
             continue
-        parts = line.split('\t')
+        parts = line.strip().split('\t')
+        pprint(parts)
         command = int(parts[3])
         param1 = float(parts[4])
         param2 = float(parts[5])
@@ -48,7 +54,7 @@ def upload_mission(vehicle, mission_file_path):
             vehicle.mav.mission_item_encode(
                 0, 0,  # target system, target component
                 len(mission_items),  # sequence
-                0,  # frame
+                3,  # frame
                 command,  # command
                 0,  # current - set to 0
                 1,  # auto-continue
@@ -56,28 +62,48 @@ def upload_mission(vehicle, mission_file_path):
                 x, y, z
             )
         )
-
+    pprint(mission_items)
     # Clear existing mission
     vehicle.waypoint_clear_all_send()
+    time.sleep(2)
+    # Send mission count
+    vehicle.mav.mission_count_send(vehicle.target_system, vehicle.target_component, len(mission_items))
     # Send mission items
     for item in mission_items:
         vehicle.mav.send(item)
         time.sleep(0.1)
-
-    # Send mission count
-    vehicle.mav.mission_count_send(0, len(mission_items))
     # Wait for ack
     while True:
         msg = vehicle.recv_match(type=['MISSION_ACK'], blocking=True)
         if msg:
+            print('MISSION_ACK recved')
             break
     return mission_items[-1]  # Return the last waypoint for monitoring
 
 def arm_and_set_auto_mode(vehicle):
-    # Check if the vehicle is already in auto mode
-    vehicle.set_mode_auto()
+    vehicle.set_mode_manual()
     # Arm the vehicle
-    vehicle.ardupilot_arm()
+    # アームを解除する（必要に応じて実行）
+    vehicle.mav.command_long_send(
+        vehicle.target_system, vehicle.target_component,
+        mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+        0,
+        0, 0, 0, 0, 0, 0, 0)
+
+    time.sleep(1)
+
+    # アームコマンドを送信
+    vehicle.mav.command_long_send(
+        vehicle.target_system, vehicle.target_component,
+        mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+        0,
+        1, 0, 0, 0, 0, 0, 0)
+
+    # アームが完了するのを待つ
+    vehicle.motors_armed_wait()
+    print("Vehicle armed!")
+
+    vehicle.set_mode_auto()
     return True
 
 def monitor_mission(vehicle, last_waypoint):
@@ -117,7 +143,8 @@ def process_task(task):
             save_tasks(load_tasks())
             return
 
-        mission_file_path = os.path.join(missions_dir, f"{task['planName']}.waypoints")
+        mission_file_path = os.path.join(missions_dir, f"{task['planName']}")
+        pprint(mission_file_path)
 
         if not os.path.exists(mission_file_path):
             print(f"Mission file {mission_file_path} not found.")
@@ -126,6 +153,7 @@ def process_task(task):
             return
 
         last_waypoint = upload_mission(vehicle, mission_file_path)
+        pprint(last_waypoint)
         if not last_waypoint:
             print(f"Failed to upload mission for task {task['name']}.")
             task['status'] = 'failed'
