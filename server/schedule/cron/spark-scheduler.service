@@ -1,0 +1,18 @@
+[Unit]
+Description=Spark Schedule Service
+After=network-online.target time-sync.target
+Wants=time-sync.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/spark/github/Rpanion-server/server/schedule/cron/task_monitor.py
+WorkingDirectory=/home/spark/github/Rpanion-server/server/schedule/
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=spark_scheduler
+User=spark
+Group=spark
+
+[Install]
+WantedBy=multi-user.target

@@ -1,3 +1,4 @@
+#! encoding: utf-8
 import json
 import os
 from datetime import datetime
@@ -5,7 +6,7 @@ import time
 from pymavlink import mavutil
 from pprint import pprint
 
-# 現在のスクリプトのディレクトリを基準にパスを設定
+# Based on this file dir
 script_dir = os.path.dirname(os.path.abspath(__file__))
 tasks_file_path = os.path.join(script_dir, '../tasks.json')
 missions_dir = os.path.join(script_dir, '../missions')
@@ -22,11 +23,11 @@ def get_current_time():
     return datetime.now().strftime('%Y-%m-%d %H:%M:00')
 
 def connect_vehicle():
-    connection_string = '127.0.0.1:14550'
+    connection_string = '127.0.0.1:14551'
     vehicle = mavutil.mavlink_connection(
         connection_string,
-        source_system=1,
         source_component=90,
+        force_connect=True,
         autoreconnect=True
     )
     vehicle.wait_heartbeat()
@@ -62,7 +63,6 @@ def upload_mission(vehicle, mission_file_path):
                 x, y, z
             )
         )
-    pprint(mission_items)
     # Clear existing mission
     vehicle.waypoint_clear_all_send()
     time.sleep(2)
@@ -83,7 +83,6 @@ def upload_mission(vehicle, mission_file_path):
 def arm_and_set_auto_mode(vehicle):
     vehicle.set_mode_manual()
     # Arm the vehicle
-    # アームを解除する（必要に応じて実行）
     vehicle.mav.command_long_send(
         vehicle.target_system, vehicle.target_component,
         mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
@@ -92,14 +91,13 @@ def arm_and_set_auto_mode(vehicle):
 
     time.sleep(1)
 
-    # アームコマンドを送信
     vehicle.mav.command_long_send(
         vehicle.target_system, vehicle.target_component,
         mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
         0,
         1, 0, 0, 0, 0, 0, 0)
 
-    # アームが完了するのを待つ
+    # Wait for armed
     vehicle.motors_armed_wait()
     print("Vehicle armed!")
 
@@ -132,6 +130,9 @@ def monitor_mission(vehicle, last_waypoint):
 
 def process_task(task):
     current_time = get_current_time()
+    pprint('Schedule time check')
+    pprint(current_time)
+    pprint(task['startTime'])
     if task['startTime'] == current_time:
         vehicle = connect_vehicle()
 
@@ -144,7 +145,6 @@ def process_task(task):
             return
 
         mission_file_path = os.path.join(missions_dir, f"{task['planName']}")
-        pprint(mission_file_path)
 
         if not os.path.exists(mission_file_path):
             print(f"Mission file {mission_file_path} not found.")
@@ -153,7 +153,6 @@ def process_task(task):
             return
 
         last_waypoint = upload_mission(vehicle, mission_file_path)
-        pprint(last_waypoint)
         if not last_waypoint:
             print(f"Failed to upload mission for task {task['name']}.")
             task['status'] = 'failed'
@@ -174,7 +173,11 @@ def process_task(task):
         save_tasks(load_tasks())
         print(f"Task {task['name']} processed with status {task['status']}.")
 
+        # Close connection
+        vehicle.close()
+
 if __name__ == "__main__":
     tasks = load_tasks()
+    pprint(tasks)
     for task in tasks:
         process_task(task)

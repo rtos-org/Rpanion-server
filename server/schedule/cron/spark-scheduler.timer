@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Spark Scheduler every minute
+After=network-online.target time-sync.target
+Wants=time-sync.target
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+Unit=spark-scheduler.service
+
+[Install]
+WantedBy=timers.target

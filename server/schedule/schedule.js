@@ -64,10 +64,6 @@ function delTask(id, callback) {
   callback(null, filtered)
 }
 
-function reScheduleTasks(tasks) {
-  // tasks.jsonのタスクを再スケジュール
-}
-
 module.exports = {
   getAllTasks,
   addTask,

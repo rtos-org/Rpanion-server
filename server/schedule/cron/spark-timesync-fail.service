@@ -1,0 +1,6 @@
+[Unit]
+Description=Handle timesync failure
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/spark/github/Rpanion-server/server/schedule/cron/handle-timesync-failure.py
