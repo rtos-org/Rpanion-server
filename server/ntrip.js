@@ -134,8 +134,12 @@ class NtripClientWrapper extends events.EventEmitter {
     const intervalMs = normalizeGgaIntervalSec(this.options.ggaIntervalSec) * 1000
     this.ggaInterval = setInterval(() => {
       if (this.client && this.client.writable) {
-        const ggaMessage = this.generateGGAMessage()
-        this.client.write(ggaMessage)
+        const [lat, lon] = this.loc || []
+        // Avoid sending 0,0 before a valid fix is available.
+        if (Number(lat) !== 0 || Number(lon) !== 0) {
+          const ggaMessage = this.generateGGAMessage()
+          this.client.write(`${ggaMessage}\r\n`)
+        }
       }
     }, intervalMs)
   }
@@ -170,7 +174,8 @@ class NtripClientWrapper extends events.EventEmitter {
       'Ntrip-Version': 'Ntrip/2.0',
       'User-Agent': 'NTRIP rpanion-server',
       'Authorization': `Basic ${auth}`,
-      'Host': os.hostname()
+      // NTRIP casters commonly require the actual caster host:port here.
+      'Host': `${host}:${port}`
     }
 
     const requestOptions = {
@@ -193,7 +198,12 @@ class NtripClientWrapper extends events.EventEmitter {
       for (const key in headers) {
         customHeader += `${key}: ${headers[key]}\r\n`
       }
-      const data = `GET /${mountpoint} HTTP/1.1\r\n${customHeader}\n\r\n`
+      const mountpointPath = String(mountpoint || '')
+        .replace(/^\/+/, '')
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/')
+      const data = `GET /${mountpointPath} HTTP/1.1\r\n${customHeader}\n\r\n`
       client.write(data)
 
       client.on('data', (data) => {
@@ -201,7 +211,12 @@ class NtripClientWrapper extends events.EventEmitter {
         let header_lines = data.toString().split("\r\n")
         for (let line of header_lines) {
           // check for 401 and 404 errors
-          if (line.includes('401 Unauthorized')) {
+          if (line.includes('SOURCETABLE')) {
+            this.emit('error', 'SOURCETABLE')
+            this.stopSendingGGA()
+            this.status = "Invalid mountpoint"
+            return
+          } else if (line.includes('401 Unauthorized')) {
             this.emit('error', '401 Unauthorized')
             this.stopSendingGGA()
             this.status = "Incorrect credentials"
