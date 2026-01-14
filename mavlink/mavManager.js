@@ -339,7 +339,19 @@ class mavManager {
   }
 
   sendRTCMMessage (gpmessage, seq) {
+    const maxMessageBytes = 4 * 180
     // create a rtcm message for the flight controller
+    if (gpmessage.length > maxMessageBytes) {
+      let seqCounter = seq
+      let buf = Buffer.from(gpmessage)
+      while (buf.length > 0) {
+        const chunk = buf.slice(0, maxMessageBytes)
+        this.sendRTCMMessage(chunk, seqCounter)
+        buf = buf.slice(maxMessageBytes)
+        seqCounter = (seqCounter + 1) & 0x1F
+      }
+      return
+    }
     let flags = 0
     if (gpmessage.length > 180) {
       flags = 1
@@ -347,10 +359,6 @@ class mavManager {
     // add in the sequence number
     flags |= (seq & 0x1F) << 3
 
-    if (gpmessage.length > 4 * 180) {
-      // can't send this with GPS_RTCM_DATA
-      return
-    }
     // send data in 180 byte parts
     let buf = Buffer.from(gpmessage)
     const msgset = []
