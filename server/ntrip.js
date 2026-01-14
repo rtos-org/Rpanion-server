@@ -110,6 +110,16 @@ const encodeGGA = (data) => {
   return resultMsg + toHexString(getChecksum(resultMsg)).toUpperCase()
 };
 
+const DEFAULT_GGA_INTERVAL_SEC = 5
+
+const normalizeGgaIntervalSec = (value, fallbackSec = DEFAULT_GGA_INTERVAL_SEC) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallbackSec
+  }
+  return Math.trunc(parsed)
+}
+
 class NtripClientWrapper extends events.EventEmitter {
   constructor(options) {
     super()
@@ -121,12 +131,13 @@ class NtripClientWrapper extends events.EventEmitter {
   }
 
   startSendingGGA() {
+    const intervalMs = normalizeGgaIntervalSec(this.options.ggaIntervalSec) * 1000
     this.ggaInterval = setInterval(() => {
       if (this.client && this.client.writable) {
         const ggaMessage = this.generateGGAMessage()
         this.client.write(ggaMessage)
       }
-    }, 60000)
+    }, intervalMs)
   }
 
   stopSendingGGA() {
@@ -241,6 +252,7 @@ class ntrip {
       password: '',
       // the interval of send nmea, unit is millisecond
       interval: 2000,
+      ggaIntervalSec: DEFAULT_GGA_INTERVAL_SEC,
       active: false,
       useTls: false
     }
@@ -267,6 +279,11 @@ class ntrip {
     this.options.password = this.settings.value('ntrip.password', '')
     this.options.active = this.settings.value('ntrip.active', false)
     this.options.useTls = this.settings.value('ntrip.useTls', false)
+    const ggaIntervalSecValue = this.settings.value('ntrip.ggaIntervalSec', null)
+    this.options.ggaIntervalSec = normalizeGgaIntervalSec(ggaIntervalSecValue, DEFAULT_GGA_INTERVAL_SEC)
+    if (!Number.isFinite(Number(ggaIntervalSecValue)) || Number(ggaIntervalSecValue) <= 0) {
+      this.settings.setValue('ntrip.ggaIntervalSec', this.options.ggaIntervalSec)
+    }
 
     this.client = null
     this.startStopNTRIP()
@@ -280,7 +297,8 @@ class ntrip {
       this.options.username,
       this.options.password,
       this.options.active,
-      this.options.useTls)
+      this.options.useTls,
+      this.options.ggaIntervalSec)
   }
 
   startStopNTRIP () {
@@ -343,7 +361,7 @@ class ntrip {
     }
   }
 
-  setSettings (host, port, mount, username, password, active, useTls) {
+  setSettings (host, port, mount, username, password, active, useTls, ggaIntervalSec) {
     // save new settings
     this.options.host = host
     this.options.port = port
@@ -352,6 +370,7 @@ class ntrip {
     this.options.password = password
     this.options.active = active
     this.options.useTls = useTls
+    this.options.ggaIntervalSec = normalizeGgaIntervalSec(ggaIntervalSec, this.options.ggaIntervalSec)
 
     // and save
     try {
@@ -362,6 +381,7 @@ class ntrip {
       this.settings.setValue('ntrip.password', this.options.password)
       this.settings.setValue('ntrip.active', this.options.active)
       this.settings.setValue('ntrip.useTls', this.options.useTls)
+      this.settings.setValue('ntrip.ggaIntervalSec', this.options.ggaIntervalSec)
       console.log('Saved NTRIP settings')
     } catch (e) {
       console.log(e)

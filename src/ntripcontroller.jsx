@@ -16,6 +16,7 @@ class NTRIPPage extends basePage {
       mountpoint: "",
       username: "",
       password: "",
+      ggaInterval: 5,
       active: false,
       showPW: false,
       useTLS: false,
@@ -69,6 +70,7 @@ class NTRIPPage extends basePage {
         mountpoint: JSON.stringify(this.state.mountpoint),
         username: JSON.stringify(this.state.username),
         password: JSON.stringify(this.state.password),
+        ggaInterval: JSON.stringify(Number(this.state.ggaInterval)),
         useTLS: this.state.useTLS,
         active: !this.state.active
       })
@@ -96,6 +98,12 @@ class NTRIPPage extends basePage {
             <div className="col-sm-10">
               <input type="number" min="100" max="60000" step="1" className="form-control" name="port" disabled={this.state.active === true} onChange={this.changeHandler} value={this.state.port} />
               <input type="checkbox" name="useTLS" disabled={this.state.active === true} onChange={this.toggleuseTLS} checked={this.state.useTLS} /><label>Use TLS</label>
+            </div>
+          </div>
+          <div className="form-group row" style={{ marginBottom: '5px' }}>
+            <label className="col-sm-2 col-form-label">GGA Interval(sec)</label>
+            <div className="col-sm-10">
+              <input type="number" min="1" step="1" className="form-control" name="ggaInterval" disabled={this.state.active === true} onChange={this.changeHandler} value={this.state.ggaInterval} />
             </div>
           </div>
           <div className="form-group row" style={{ marginBottom: '5px' }}>
